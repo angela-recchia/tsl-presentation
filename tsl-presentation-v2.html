@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSL — Three Shading Language</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b0f;
+  --surface: #0d1117;
+  --surface2: #161b22;
+  --surface3: #1c2230;
+  --border: #21262d;
+  --accent: #58c7ff;
+  --accent2: #ff7b72;
+  --accent3: #56d364;
+  --accent4: #ffd200;
+  --purple: #bc8cff;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --dim: #484f58;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;overflow:hidden}
+
+/* ── BG ── */
+#bgCanvas{position:fixed;inset:0;z-index:0;opacity:.35;pointer-events:none}
+
+/* ── LAYOUT ── */
+.app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 28px;border-bottom:1px solid var(--border);background:rgba(7,11,15,.92);backdrop-filter:blur(14px);flex-shrink:0;gap:16px}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--accent);letter-spacing:2px;flex-shrink:0}
+.logo em{color:var(--accent2);font-style:normal}
+.slide-info{font-size:11px;color:var(--muted);letter-spacing:.5px;flex-shrink:0}
+.slide-info b{color:var(--text)}
+.chapter-label{font-size:11px;color:var(--purple);letter-spacing:2px;text-transform:uppercase;opacity:.7;flex:1;text-align:center}
+
+/* ── PROGRESS ── */
+.progress{height:2px;background:var(--border);flex-shrink:0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--purple));transition:width .4s ease}
+
+/* ── VIEWPORT ── */
+.viewport{flex:1;overflow:hidden;position:relative}
+.track{display:flex;height:100%;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.slide{min-width:100vw;height:100%;padding:32px 56px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── TYPOGRAPHY ── */
+.tag{font-size:10px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;opacity:.65;flex-shrink:0}
+.title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(24px,3.5vw,46px);line-height:1.1;flex-shrink:0}
+.title .b{color:var(--accent)}
+.title .r{color:var(--accent2)}
+.title .g{color:var(--accent3)}
+.title .p{color:var(--purple)}
+.subtitle{font-size:14px;color:var(--muted);line-height:1.7;max-width:760px;flex-shrink:0}
+
+/* ── CODE ── */
+.cw{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
+.dots{display:flex;gap:5px}
+.dots span{width:9px;height:9px;border-radius:50%;display:block}
+.dots span:nth-child(1){background:#ff5f56}
+.dots span:nth-child(2){background:#ffbd2e}
+.dots span:nth-child(3){background:#27c93f}
+pre{padding:16px;font-size:12.5px;line-height:1.75;overflow-x:auto;color:var(--text);tab-size:2}
+
+/* syntax */
+.kw{color:#ff7b72}.fn{color:#79c0ff}.str{color:#a5d6a7}.num{color:#f0883e}
+.cmt{color:#6e7681;font-style:italic}.cls{color:#ffd700}.op{color:#ff7b72}
+.type{color:#bc8cff}.prop{color:#79c0ff}.var2{color:#e6edf3}
+
+/* ── GRIDS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g12{display:grid;grid-template-columns:1fr 2fr;gap:16px}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+
+/* ── CARDS ── */
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card-t{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);margin-bottom:6px}
+.card p,.card li{font-size:12.5px;color:var(--muted);line-height:1.65}
+.card ul{padding-left:16px}
+.ca .card-t{color:var(--accent2)}.cg .card-t{color:var(--accent3)}
+.cy .card-t{color:var(--accent4)}.cp .card-t{color:var(--purple)}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.bb{background:rgba(88,199,255,.12);color:var(--accent);border:1px solid rgba(88,199,255,.25)}
+.br{background:rgba(255,123,114,.12);color:var(--accent2);border:1px solid rgba(255,123,114,.25)}
+.bg{background:rgba(86,211,100,.12);color:var(--accent3);border:1px solid rgba(86,211,100,.25)}
+.bp{background:rgba(188,140,255,.12);color:var(--purple);border:1px solid rgba(188,140,255,.25)}
+.by{background:rgba(255,210,0,.12);color:var(--accent4);border:1px solid rgba(255,210,0,.25)}
+
+/* ── CALLOUT ── */
+.callout{border-left:3px solid var(--accent);background:rgba(88,199,255,.05);padding:12px 16px;border-radius:0 8px 8px 0;font-size:12.5px;color:var(--muted);line-height:1.7}
+.callout.w{border-color:var(--accent4);background:rgba(255,210,0,.05)}
+.callout.e{border-color:var(--accent2);background:rgba(255,123,114,.05)}
+.callout.g{border-color:var(--accent3);background:rgba(86,211,100,.05)}
+
+/* ── TABLE ── */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 12px;color:var(--accent);border-bottom:1px solid var(--border);font-weight:600;font-size:11px;letter-spacing:.5px}
+td{padding:8px 12px;border-bottom:1px solid rgba(33,38,45,.5);color:var(--muted)}
+td:first-child{color:var(--text)}
+tr:hover td{background:rgba(88,199,255,.03)}
+
+code{background:rgba(88,199,255,.1);color:var(--accent);padding:1px 5px;border-radius:4px;font-size:.88em;font-family:'JetBrains Mono',monospace}
+
+/* ── HERO ── */
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:20px}
+.hero-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(70px,14vw,130px);line-height:1;background:linear-gradient(135deg,var(--accent),var(--purple) 50%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-4px}
+.hero-sub{font-family:'Syne',sans-serif;font-size:16px;color:var(--muted);letter-spacing:6px;text-transform:uppercase}
+.hero-desc{font-size:13.5px;color:var(--muted);max-width:580px;line-height:1.85}
+.brow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* ── LABELS ── */
+.lbad{font-size:10px;color:var(--accent2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:600}
+.lgood{font-size:10px;color:var(--accent3);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:600}
+
+/* ── PIPELINE DIAGRAM ── */
+.pipe{display:flex;align-items:center;gap:0;flex-wrap:wrap;justify-content:center}
+.pipe-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 20px;text-align:center;min-width:120px}
+.pipe-box .pb-label{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.pipe-box .pb-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.pipe-arrow{color:var(--dim);font-size:22px;padding:0 8px}
+.pipe-box.active{border-color:var(--accent);background:rgba(88,199,255,.07)}
+.pipe-box.active .pb-name{color:var(--accent)}
+
+/* ── INTERACTIVE DEMOS ── */
+.demo-shell{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.demo-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+.demo-title{font-size:11px;color:var(--muted)}
+.demo-badge{font-size:10px;color:var(--accent3);background:rgba(86,211,100,.1);border:1px solid rgba(86,211,100,.2);padding:2px 8px;border-radius:20px}
+.demo-canvas-wrap{display:flex;align-items:center;justify-content:center;background:var(--bg);min-height:160px;position:relative}
+.demo-canvas-wrap canvas{display:block;border-radius:0}
+.demo-controls{padding:12px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border)}
+.demo-controls label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;cursor:pointer}
+.demo-controls input[type=range]{accent-color:var(--accent);cursor:pointer;width:100px}
+.demo-controls input[type=color]{width:28px;height:20px;border:none;background:none;cursor:pointer;padding:0}
+.demo-controls .val{font-size:11px;color:var(--accent);width:35px}
+.run-btn{background:rgba(88,199,255,.1);border:1px solid rgba(88,199,255,.25);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .2s}
+.run-btn:hover{background:rgba(88,199,255,.2)}
+.run-btn.active{background:rgba(86,211,100,.1);border-color:rgba(86,211,100,.3);color:var(--accent3)}
+
+/* editor-like playground */
+.playground{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:340px}
+.pg-editor{display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.pg-header{padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.pg-textarea{flex:1;background:var(--surface2);border:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;padding:14px;resize:none;outline:none;tab-size:2}
+.pg-canvas-area{display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden}
+.pg-canvas-area canvas{display:block}
+.pg-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none}
+.pg-hint{font-size:11px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+.error-msg{position:absolute;bottom:0;left:0;right:0;background:rgba(255,123,114,.1);border-top:1px solid rgba(255,123,114,.2);color:var(--accent2);font-size:11px;padding:6px 14px;font-family:'JetBrains Mono',monospace}
+
+/* timeline */
+.tl{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:16px}
+.tl-line{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0}
+.tl-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px}
+.tl-connector{width:1px;flex:1;background:var(--border);min-height:20px;margin:3px 0}
+.tl-content{padding-bottom:12px}
+.tl-year{font-size:10px;color:var(--accent);font-weight:700;margin-bottom:2px;letter-spacing:.5px}
+.tl-text{font-size:12.5px;color:var(--muted);line-height:1.6}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:center;gap:14px;padding:13px;border-top:1px solid var(--border);background:rgba(7,11,15,.92);backdrop-filter:blur(14px);flex-shrink:0}
+.nav-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:rgba(88,199,255,.07)}
+.nav-btn:disabled{opacity:.25;cursor:not-allowed}
+.nav-dots{display:flex;gap:5px;align-items:center;flex-wrap:wrap;max-width:400px;justify-content:center}
+.nd{width:5px;height:5px;border-radius:50%;background:var(--dim);cursor:pointer;transition:all .25s}
+.nd.on{background:var(--accent);width:18px;border-radius:3px}
+.nd:hover:not(.on){background:var(--muted)}
+
+/* utils */
+.row{display:flex;gap:12px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px}
+.mt{margin-top:8px}
+.flex-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.scroll-hint{font-size:10px;color:var(--dim);text-align:right;margin-top:auto;padding-top:4px}
+
+/* glsl comparison */
+.vs{display:grid;grid-template-columns:1fr 32px 1fr;gap:12px;align-items:start}
+.vs-mid{display:flex;align-items:center;justify-content:center;padding-top:36px;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--dim)}
+
+/* concept box */
+.concept{background:linear-gradient(135deg,rgba(88,199,255,.05),rgba(188,140,255,.05));border:1px solid rgba(88,199,255,.15);border-radius:8px;padding:16px}
+.concept-t{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.concept p{font-size:12.5px;color:var(--muted);line-height:1.7}
+
+/* progress steps */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:0;align-items:stretch}
+.step-num{width:36px;display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.step-line{width:1px;flex:1;background:var(--border);margin:4px 0}
+.step-body{padding:0 0 16px 14px}
+.step-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px}
+.step-desc{font-size:12px;color:var(--muted);line-height:1.65}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div class="app">
+  <div class="hdr">
+    <div class="logo">T<em>S</em>L</div>
+    <div class="chapter-label" id="chapterLabel">intro</div>
+    <div class="slide-info">slide <b id="sNum">1</b> / <b id="sTotal">—</b></div>
+  </div>
+  <div class="progress"><div class="progress-fill" id="pFill"></div></div>
+
+  <div class="viewport">
+    <div class="track" id="track">
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 1 — HERO
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hero">
+    <div class="hero-logo">TSL</div>
+    <div class="hero-sub">Three Shading Language</div>
+    <div class="hero-desc">
+      Scrivere shader in Three.js senza toccare GLSL o WGSL —<br>
+      JavaScript puro, cross-backend, reattivo, componibile.
+    </div>
+    <div class="brow">
+      <span class="badge bb">Three.js r160+</span>
+      <span class="badge bg">WebGPU Ready</span>
+      <span class="badge br">No GLSL needed</span>
+      <span class="badge bp">Node-based</span>
+      <span class="badge by">Cross-backend</span>
+    </div>
+    <div style="font-size:11px;color:var(--dim);margin-top:8px">← → per navigare &nbsp;·&nbsp; scroll per slide lunghe &nbsp;·&nbsp; demo interattive incluse</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 2 — COS'È UNO SHADER (intro per non esperti)
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 00 — fondamenta</div>
+  <div class="title">Prima di tutto: <span class="b">cosa è uno shader?</span></div>
+  <div class="subtitle">Se conosci già GLSL, salta pure alla slide 4. Altrimenti — 3 minuti e hai tutto il contesto.</div>
+
+  <div class="g2">
+    <div class="col">
+      <div class="concept">
+        <div class="concept-t">🖥️ CPU vs GPU</div>
+        <p>Il tuo JavaScript gira sulla <strong>CPU</strong> — un processore potente ma con pochi core (4–16). La <strong>GPU</strong> ha migliaia di core più semplici. Uno shader è un <strong>programma che gira su GPU</strong>, eseguito <em>in parallelo</em> per ogni pixel o vertice.</p>
+      </div>
+      <div class="concept">
+        <div class="concept-t">📐 Vertex Shader</div>
+        <p>Viene chiamato <strong>una volta per ogni vertice</strong> della mesh 3D. Il suo compito: dire <em>dove</em> quel punto appare sullo schermo. Puoi usarlo per animare, deformare, fare onde.</p>
+      </div>
+      <div class="concept">
+        <div class="concept-t">🎨 Fragment Shader</div>
+        <p>Viene chiamato <strong>una volta per ogni pixel</strong> da colorare. Il suo compito: restituire un colore. Può leggere texture, calcolare luci, fare effetti visivi. È dove succede tutta la magia visuale.</p>
+      </div>
+    </div>
+    <div class="col">
+      <!-- Pipeline diagram -->
+      <div class="card">
+        <div class="card-t">La pipeline grafica</div>
+        <div class="pipe" style="margin-top:14px;flex-direction:column;align-items:flex-start;gap:0">
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--accent4)"></div><div class="tl-connector"></div></div>
+            <div class="tl-content"><div class="tl-year">JavaScript (CPU)</div><div class="tl-text">Definisce geometrie, materiali, uniforms. Chiama il renderer ogni frame.</div></div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--accent)"></div><div class="tl-connector"></div></div>
+            <div class="tl-content"><div class="tl-year">Vertex Shader (GPU)</div><div class="tl-text">Per ogni vertice: proietta nello spazio 2D dello schermo. Può deformare posizioni.</div></div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--purple)"></div><div class="tl-connector"></div></div>
+            <div class="tl-content"><div class="tl-year">Rasterization (automatica)</div><div class="tl-text">La GPU converte i triangoli in pixel, interpolando i <em>varyings</em> tra vertici.</div></div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--accent2)"></div></div>
+            <div class="tl-content"><div class="tl-year">Fragment Shader (GPU)</div><div class="tl-text">Per ogni pixel: calcola e restituisce il colore finale. Qui vivi gli effetti.</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        💡 Un <strong>varying</strong> è un valore calcolato nel vertex shader e <em>interpolato</em> per ogni pixel. Se vertice A = rosso e vertice B = blu, il pixel a metà riceve viola. È così che funzionano i gradienti base.
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI DEMO: cosa è un fragment shader -->
+  <div class="demo-shell">
+    <div class="demo-bar">
+      <span class="demo-title">🎮 Demo: fragment shader sul canvas — muovi i controlli!</span>
+      <span class="demo-badge">● live</span>
+    </div>
+    <div class="demo-canvas-wrap">
+      <canvas id="d0" width="700" height="140"></canvas>
+    </div>
+    <div class="demo-controls">
+      <label>Velocità <input type="range" id="d0speed" min="0.2" max="5" step="0.1" value="1"><span class="val" id="d0speedV">1.0</span></label>
+      <label>Scala <input type="range" id="d0scale" min="1" max="20" step="0.5" value="6"><span class="val" id="d0scaleV">6</span></label>
+      <label>Colore <input type="color" id="d0col" value="#58c7ff"></label>
+      <span style="font-size:11px;color:var(--dim);margin-left:auto">ogni pixel = f(uv, time) — come un fragment shader</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 3 — GLSL IL VECCHIO MODO
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 01 — il problema</div>
+  <div class="title">GLSL in Three.js: il <span class="r">vecchio modo</span></div>
+  <div class="subtitle">Prima di TSL, scrivevi shader come stringhe GLSL. Funzionava, ma era fragile, verbose e non componibile.</div>
+
+  <div class="g2">
+    <div>
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>ShaderMaterial — approccio classico</span></div>
+<pre><span class="cmt">// ❌ Tutto come stringhe — zero type-checking</span>
+<span class="kw">const</span> <span class="var2">mat</span> = <span class="kw">new</span> <span class="cls">THREE.ShaderMaterial</span>({
+  uniforms: {
+    uTime: { value: <span class="num">0</span> },
+    uColor: { value: <span class="kw">new</span> <span class="cls">THREE.Color</span>(<span class="str">'red'</span>) }
+  },
+  vertexShader: <span class="str">`
+    uniform float uTime;
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      vec3 pos = position;
+      pos.y += sin(pos.x*3.0 + uTime) * 0.2;
+      gl_Position = projectionMatrix
+        * modelViewMatrix * vec4(pos,1.0);
+    }
+  `</span>,
+  fragmentShader: <span class="str">`
+    uniform vec3 uColor;
+    varying vec2 vUv;
+    void main() {
+      gl_FragColor = vec4(uColor*vUv.x, 1.0);
+    }
+  `</span>
+});
+
+<span class="cmt">// Loop — update manuale degli uniforms</span>
+<span class="kw">function</span> <span class="fn">animate</span>() {
+  mat.uniforms.uTime.value = clock.getElapsedTime();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}</pre>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card ca">
+        <div class="card-t">🚨 Problemi del vecchio approccio</div>
+        <ul style="margin-top:8px">
+          <li style="margin-bottom:8px"><strong>Stringhe GLSL</strong> — nessun autocomplete, nessun type-check, errori solo a runtime</li>
+          <li style="margin-bottom:8px"><strong>Non componibile</strong> — non puoi "importare" funzioni da altri file facilmente</li>
+          <li style="margin-bottom:8px"><strong>WebGL-only</strong> — GLSL non funziona su WebGPU che usa WGSL</li>
+          <li style="margin-bottom:8px"><strong>Uniforms manuali</strong> — aggiornamento esplicito ogni frame</li>
+          <li><strong>onBeforeCompile</strong> — hack per modificare shader built-in, fragile tra versioni</li>
+        </ul>
+      </div>
+      <div class="callout w">
+        ⚠️ <code>onBeforeCompile</code> era il metodo per modificare i materiali standard (MeshStandardMaterial, ecc.) iniettando codice GLSL. Funzionava ma si rompeva ad ogni aggiornamento di Three.js.
+      </div>
+      <div class="callout g">
+        ✅ Con TSL: JavaScript nativo, type-safe, cross-backend (GLSL + WGSL), aggiornamento uniforms automatico, funzioni riutilizzabili.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 4 — TSL ARCHITETTURA
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 02 — architettura</div>
+  <div class="title">Come <span class="r">funziona</span> TSL internamente</div>
+
+  <div class="g3">
+    <div class="card">
+      <div class="card-t">1. Node Graph</div>
+      <p>Ogni operazione TSL crea un <code>Node</code>. Le operazioni si concatenano in un <strong>DAG</strong> (directed acyclic graph). Non eseguono codice — descrivono una computazione.</p>
+    </div>
+    <div class="card ca">
+      <div class="card-t">2. Code Generation</div>
+      <p>Il <code>NodeBuilder</code> visita il grafo e genera <strong>GLSL</strong> (WebGLRenderer) o <strong>WGSL</strong> (WebGPURenderer). Stessa codebase, due backend.</p>
+    </div>
+    <div class="card cg">
+      <div class="card-t">3. NodeMaterial</div>
+      <p>I nodi vengono assegnati come proprietà (<code>colorNode</code>, <code>normalNode</code>…) di un <code>NodeMaterial</code>. Il renderer compila al primo uso.</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="cw">
+      <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>node-graph.js — i nodi sono lazy</span></div>
+<pre><span class="kw">import</span> { <span class="fn">vec3</span>, <span class="fn">sin</span>, <span class="fn">add</span>, <span class="fn">time</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="cmt">// ⚠️ Questo NON calcola niente subito!</span>
+<span class="cmt">// Costruisce un grafo di nodi (AST)</span>
+<span class="kw">const</span> <span class="var2">colorNode</span> = <span class="fn">vec3</span>(
+  <span class="fn">sin</span>(<span class="fn">add</span>(<span class="fn">time</span>, <span class="num">0.0</span>)),
+  <span class="fn">sin</span>(<span class="fn">add</span>(<span class="fn">time</span>, <span class="num">2.094</span>)),
+  <span class="fn">sin</span>(<span class="fn">add</span>(<span class="fn">time</span>, <span class="num">4.189</span>))
+);
+
+<span class="cmt">// Solo quando assegni al materiale e il renderer
+// chiama render(), il grafo viene compilato in GLSL/WGSL</span>
+<span class="kw">const</span> <span class="var2">mat</span> = <span class="kw">new</span> <span class="cls">MeshBasicNodeMaterial</span>();
+<span class="var2">mat</span>.<span class="prop">colorNode</span> = <span class="var2">colorNode</span>;
+
+<span class="cmt">// GLSL generato automaticamente (circa):</span>
+<span class="cmt">// vec3 color = vec3(sin(time), sin(time+2.094), sin(time+4.189));</span></pre>
+    </div>
+    <div class="col">
+      <div class="callout w">
+        ⚠️ <strong>La distinzione fondamentale:</strong> i valori TSL non sono numeri JavaScript. <code>float(1.0)</code> crea un <code>FloatNode</code>, non il numero <code>1.0</code>. Non puoi fare <code>float(1) + 2</code> — devi fare <code>float(1).add(2)</code>.
+      </div>
+      <!-- DEMO: node grafo visualizzato -->
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">Grafo di nodi live</span><span class="demo-badge">● animato</span></div>
+        <div class="demo-canvas-wrap" style="min-height:140px">
+          <canvas id="dGraph" width="380" height="130"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 5 — SINTASSI BASE
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 03 — sintassi</div>
+  <div class="title">Sintassi <span class="b">fondamentale</span></div>
+
+  <div class="vs">
+    <div>
+      <div class="lbad">❌ GLSL</div>
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>vertex.glsl</span></div>
+<pre><span class="type">uniform float</span> uTime;
+<span class="type">varying vec2</span> vUv;
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  vUv = uv;
+  <span class="type">vec3</span> pos = position;
+  pos.y += <span class="fn">sin</span>(
+    pos.x * <span class="num">2.0</span> + uTime * <span class="num">1.5</span>
+  ) * <span class="num">0.3</span>;
+  gl_Position = projectionMatrix
+    * modelViewMatrix
+    * <span class="type">vec4</span>(pos, <span class="num">1.0</span>);
+}</pre>
+      </div>
+    </div>
+    <div class="vs-mid">→</div>
+    <div>
+      <div class="lgood">✅ TSL</div>
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>tsl.js</span></div>
+<pre><span class="kw">import</span> { <span class="fn">Fn</span>, <span class="fn">positionLocal</span>,
+  <span class="fn">sin</span>, <span class="fn">time</span>, <span class="fn">uv</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="kw">const</span> <span class="var2">vertFn</span> = <span class="fn">Fn</span>(() => {
+  <span class="kw">const</span> <span class="var2">pos</span> = <span class="fn">positionLocal</span>.<span class="fn">toVar</span>();
+  <span class="var2">pos</span>.<span class="prop">y</span>.<span class="fn">addAssign</span>(
+    <span class="fn">sin</span>(<span class="var2">pos</span>.<span class="prop">x</span>.<span class="fn">mul</span>(<span class="num">2</span>)
+      .<span class="fn">add</span>(<span class="fn">time</span>.<span class="fn">mul</span>(<span class="num">1.5</span>)))
+    .<span class="fn">mul</span>(<span class="num">0.3</span>)
+  );
+  <span class="kw">return</span> <span class="var2">pos</span>;
+});
+mat.positionNode = <span class="fn">vertFn</span>();</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <div class="card-t">Tipi base</div>
+      <p style="line-height:2.2"><code>float()</code> <code>int()</code> <code>bool()</code><br><code>vec2()</code> <code>vec3()</code> <code>vec4()</code><br><code>mat3()</code> <code>mat4()</code></p>
+    </div>
+    <div class="card ca">
+      <div class="card-t">Operatori (metodi)</div>
+      <p style="line-height:2.2"><code>.add()</code> <code>.sub()</code> <code>.mul()</code> <code>.div()</code><br><code>.addAssign()</code> <code>.mulAssign()</code><br><code>add(a,b)</code> <code>mul(a,b)</code> (funzioni)</p>
+    </div>
+    <div class="card cy">
+      <div class="card-t">Swizzling (come GLSL)</div>
+      <p style="line-height:2.2"><code>v.x</code> <code>v.xy</code> <code>v.rgb</code> <code>v.zyx</code><br>Accessori nativi — <code>v.x = float(1)</code><br><code>v.xyz.assign(other)</code></p>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE demo vertex displacement -->
+  <div class="demo-shell">
+    <div class="demo-bar"><span class="demo-title">🎮 Vertex displacement — come funziona pos.y += sin(pos.x * freq + time)</span><span class="demo-badge">● live</span></div>
+    <div class="demo-canvas-wrap">
+      <canvas id="dVert" width="700" height="150"></canvas>
+    </div>
+    <div class="demo-controls">
+      <label>Freq <input type="range" id="dvFreq" min="0.5" max="20" step="0.5" value="4"><span class="val" id="dvFreqV">4</span></label>
+      <label>Ampiezza <input type="range" id="dvAmp" min="0" max="0.5" step="0.01" value="0.15"><span class="val" id="dvAmpV">.15</span></label>
+      <label>Velocità <input type="range" id="dvSpd" min="0" max="5" step="0.1" value="1.5"><span class="val" id="dvSpdV">1.5</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 6 — BUILT-IN NODES
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 04 — built-ins</div>
+  <div class="title">Nodi <span class="b">built-in</span> pronti all'uso</div>
+  <div class="subtitle">TSL espone le variabili shader standard come nodi già pronti. Zero dichiarazioni manuali.</div>
+
+  <div class="g2">
+    <table>
+      <tr><th>Nodo TSL</th><th>Equivalente GLSL</th><th>Stage</th></tr>
+      <tr><td><code>positionLocal</code></td><td><code>position</code></td><td><span class="badge bb">vert</span></td></tr>
+      <tr><td><code>positionWorld</code></td><td><code>modelMatrix * position</code></td><td><span class="badge bb">vert</span></td></tr>
+      <tr><td><code>normalLocal</code></td><td><code>normal</code></td><td><span class="badge bb">vert</span></td></tr>
+      <tr><td><code>normalWorld</code></td><td>normal trasformata</td><td><span class="badge bb">vert</span></td></tr>
+      <tr><td><code>uv()</code></td><td><code>uv</code></td><td><span class="badge bb">vert</span></td></tr>
+      <tr><td><code>uv(1)</code></td><td><code>uv2</code> (lightmap)</td><td><span class="badge bb">vert</span></td></tr>
+      <tr><td><code>time</code></td><td><code>uniform float time</code></td><td><span class="badge bp">any</span></td></tr>
+      <tr><td><code>deltaTime</code></td><td>—</td><td><span class="badge bp">any</span></td></tr>
+      <tr><td><code>cameraPosition</code></td><td><code>cameraPosition</code></td><td><span class="badge bp">any</span></td></tr>
+      <tr><td><code>screenUV</code></td><td><code>gl_FragCoord.xy / res</code></td><td><span class="badge br">frag</span></td></tr>
+      <tr><td><code>vertexColor()</code></td><td><code>color</code></td><td><span class="badge bb">vert</span></td></tr>
+    </table>
+
+    <div class="col">
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>fresnel con built-ins</span></div>
+<pre><span class="kw">import</span> { <span class="fn">positionWorld</span>, <span class="fn">normalWorld</span>,
+  <span class="fn">cameraPosition</span>, <span class="fn">dot</span>,
+  <span class="fn">normalize</span>, <span class="fn">mix</span>, <span class="fn">vec3</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="cmt">// Fresnel — quanto siamo "di taglio" alla camera</span>
+<span class="kw">const</span> <span class="var2">viewDir</span> = <span class="fn">normalize</span>(
+  <span class="fn">cameraPosition</span>.<span class="fn">sub</span>(<span class="fn">positionWorld</span>)
+);
+<span class="kw">const</span> <span class="var2">fresnel</span> = <span class="fn">dot</span>(
+  <span class="fn">normalWorld</span>, <span class="var2">viewDir</span>
+).<span class="fn">oneMinus</span>().<span class="fn">pow</span>(<span class="num">3</span>);
+
+<span class="cmt">// Mix tra due colori</span>
+<span class="kw">const</span> <span class="var2">color</span> = <span class="fn">mix</span>(
+  <span class="fn">vec3</span>(<span class="num">0.0</span>, <span class="num">0.05</span>, <span class="num">0.6</span>),
+  <span class="fn">vec3</span>(<span class="num">1.0</span>, <span class="num">1.0</span>, <span class="num">1.0</span>),
+  <span class="var2">fresnel</span>
+);</pre>
+      </div>
+      <!-- DEMO Fresnel -->
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">Fresnel interattivo</span><span class="demo-badge">● live</span></div>
+        <div class="demo-canvas-wrap" style="min-height:120px">
+          <canvas id="dFresnel" width="380" height="120"></canvas>
+        </div>
+        <div class="demo-controls">
+          <label>Potenza <input type="range" id="dfPow" min="0.5" max="8" step="0.1" value="3"><span class="val" id="dfPowV">3</span></label>
+          <label>Colore A <input type="color" id="dfC1" value="#000d99"></label>
+          <label>Colore B <input type="color" id="dfC2" value="#ffffff"></label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 7 — UNIFORMS
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 05 — uniforms & varyings</div>
+  <div class="title"><span class="b">Uniforms</span> reattivi e <span class="r">Varyings</span></div>
+
+  <div class="g2">
+    <div class="col">
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>uniforms.js</span></div>
+<pre><span class="kw">import</span> { <span class="fn">uniform</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="cmt">// Crea uniform — aggiorna .value per cambiare</span>
+<span class="kw">const</span> <span class="var2">uColor</span> = <span class="fn">uniform</span>(<span class="kw">new</span> <span class="cls">Color</span>(<span class="str">'hotpink'</span>));
+<span class="kw">const</span> <span class="var2">uIntensity</span> = <span class="fn">uniform</span>(<span class="num">1.0</span>);
+<span class="kw">const</span> <span class="var2">uOffset</span> = <span class="fn">uniform</span>(<span class="kw">new</span> <span class="cls">Vector2</span>());
+
+<span class="cmt">// Usalo nel grafo</span>
+<span class="var2">mat</span>.<span class="prop">colorNode</span> = <span class="var2">uColor</span>.<span class="fn">mul</span>(<span class="var2">uIntensity</span>);
+
+<span class="cmt">// Aggiornamento da JS — nessun rebuild shader!</span>
+<span class="fn">animate</span>(() => {
+  <span class="var2">uIntensity</span>.<span class="prop">value</span> = <span class="cls">Math</span>.<span class="fn">sin</span>(Date.<span class="fn">now</span>() * <span class="num">.001</span>);
+  <span class="cmt">// uColor.value.set('blue') — funziona anche su Color</span>
+});</pre>
+      </div>
+      <div class="callout g">✅ Cambiare <code>.value</code> aggiorna lo shader al frame successivo senza recompilation. Enorme vantaggio vs GLSL manuale.</div>
+    </div>
+    <div class="col">
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>varyings.js</span></div>
+<pre><span class="kw">import</span> { <span class="fn">varying</span>, <span class="fn">positionLocal</span>,
+  <span class="fn">Fn</span>, <span class="fn">vec3</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="cmt">// Dichiara un varying (interpolato GPU)</span>
+<span class="kw">const</span> <span class="var2">vWorldPos</span> = <span class="fn">varying</span>(<span class="fn">vec3</span>());
+
+<span class="cmt">// Vertex: assegna il valore</span>
+<span class="var2">mat</span>.<span class="prop">positionNode</span> = <span class="fn">Fn</span>(() => {
+  <span class="var2">vWorldPos</span>.<span class="fn">assign</span>(<span class="fn">positionLocal</span>);
+  <span class="kw">return</span> <span class="fn">positionLocal</span>;
+})();
+
+<span class="cmt">// Fragment: usa il valore interpolato per pixel</span>
+<span class="var2">mat</span>.<span class="prop">colorNode</span> = <span class="var2">vWorldPos</span>
+  .<span class="fn">abs</span>().<span class="fn">fract</span>(); <span class="cmt">// colori dalla posizione</span></pre>
+      </div>
+      <!-- DEMO uniforms live -->
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">Uniform live — simula uColor.value</span><span class="demo-badge">● interattivo</span></div>
+        <div class="demo-canvas-wrap" style="min-height:100px">
+          <canvas id="dUniform" width="380" height="100"></canvas>
+        </div>
+        <div class="demo-controls">
+          <label>uColor <input type="color" id="duColor" value="#ff7b72"></label>
+          <label>uIntensity <input type="range" id="duInt" min="0" max="2" step="0.01" value="1"><span class="val" id="duIntV">1.0</span></label>
+          <label>uRipple <input type="range" id="duRip" min="0" max="10" step="0.1" value="3"><span class="val" id="duRipV">3</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 8 — Fn() FUNZIONI
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 06 — funzioni</div>
+  <div class="title">Funzioni shader con <span class="b">Fn()</span></div>
+  <div class="subtitle">TSL permette di definire funzioni shader riutilizzabili in JavaScript, con loop, conditional e return.</div>
+
+  <div class="g2">
+    <div class="cw">
+      <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>Fn() — funzioni e control flow</span></div>
+<pre><span class="kw">import</span> { <span class="fn">Fn</span>, <span class="fn">float</span>, <span class="fn">vec3</span>, <span class="fn">If</span>, <span class="fn">Loop</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="cmt">// fBm — fractal brownian motion noise</span>
+<span class="kw">const</span> <span class="var2">fbm</span> = <span class="fn">Fn</span>(([<span class="var2">p</span>]) => {
+  <span class="kw">const</span> <span class="var2">value</span>     = <span class="fn">float</span>(<span class="num">0</span>).<span class="fn">toVar</span>();   <span class="cmt">// mutabile!</span>
+  <span class="kw">const</span> <span class="var2">amplitude</span> = <span class="fn">float</span>(<span class="num">0.5</span>).<span class="fn">toVar</span>();
+  <span class="kw">const</span> <span class="var2">pos</span>       = <span class="var2">p</span>.<span class="fn">toVar</span>();
+
+  <span class="fn">Loop</span>(<span class="num">6</span>, () => {
+    <span class="var2">value</span>.<span class="fn">addAssign</span>(
+      <span class="fn">snoise</span>(<span class="var2">pos</span>).<span class="fn">mul</span>(<span class="var2">amplitude</span>)
+    );
+    <span class="var2">amplitude</span>.<span class="fn">mulAssign</span>(<span class="num">0.5</span>);
+    <span class="var2">pos</span>.<span class="fn">mulAssign</span>(<span class="num">2.0</span>);
+  });
+  <span class="kw">return</span> <span class="var2">value</span>;
+});
+
+<span class="cmt">// Conditionals</span>
+<span class="kw">const</span> <span class="var2">colorFn</span> = <span class="fn">Fn</span>(([<span class="var2">n</span>]) => {
+  <span class="kw">const</span> <span class="var2">col</span> = <span class="fn">vec3</span>(<span class="num">0</span>).<span class="fn">toVar</span>();
+  <span class="fn">If</span>(<span class="var2">n</span>.<span class="fn">greaterThan</span>(<span class="num">0.5</span>), () => {
+    <span class="var2">col</span>.<span class="fn">assign</span>(<span class="fn">vec3</span>(<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>));
+  }).<span class="fn">Else</span>(() => {
+    <span class="var2">col</span>.<span class="fn">assign</span>(<span class="fn">vec3</span>(<span class="num">0</span>, <span class="num">0.3</span>, <span class="num">1</span>));
+  });
+  <span class="kw">return</span> <span class="var2">col</span>;
+});
+
+<span class="cmt">// Chiamata — come JS normale</span>
+<span class="var2">mat</span>.<span class="prop">colorNode</span> = <span class="var2">fbm</span>(<span class="fn">uv</span>().<span class="fn">mul</span>(<span class="num">4</span>));</pre>
+    </div>
+    <div class="col">
+      <div class="g2" style="grid-template-columns:1fr 1fr">
+        <div class="callout g">✅ <code>Fn()</code> compila la funzione <strong>una volta</strong> nel GLSL generato — non inline. Codice pulito, riusabile.</div>
+        <div class="callout w">⚠️ <code>.toVar()</code> obbligatorio per variabili mutabili — senza, il nodo è immutabile e <code>assign</code> fallisce silenziosamente.</div>
+      </div>
+      <!-- DEMO Fn noise interattivo -->
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">fBm noise — simula Loop(octaves)</span><span class="demo-badge">● live</span></div>
+        <div class="demo-canvas-wrap" style="min-height:160px">
+          <canvas id="dNoise" width="380" height="160"></canvas>
+        </div>
+        <div class="demo-controls">
+          <label>Ottave <input type="range" id="dnOct" min="1" max="8" step="1" value="4"><span class="val" id="dnOctV">4</span></label>
+          <label>Scala <input type="range" id="dnScale" min="1" max="15" step="0.5" value="4"><span class="val" id="dnScaleV">4</span></label>
+          <label>Velocità <input type="range" id="dnSpd" min="0" max="2" step="0.05" value="0.2"><span class="val" id="dnSpdV">.2</span></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-t">Control flow disponibile in Fn()</div>
+        <p style="line-height:2.2"><code>If(cond, fn).Else(fn)</code><br><code>Loop(n, fn)</code> — for loop<br><code>Loop([start, end], ({i})=>{})</code><br><code>Break()</code> <code>Continue()</code><br><code>Switch(val, cases)</code></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 9 — PLAYGROUND
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 07 — playground</div>
+  <div class="title">🧪 Fragment Shader <span class="b">Playground</span></div>
+  <div class="subtitle">Scrivi il tuo shader come se fosse GLSL — qui simuliamo le funzioni TSL sul canvas. Sperimenta con le formule.</div>
+
+  <div class="playground" id="playground">
+    <div class="pg-editor">
+      <div class="pg-header">
+        <span>fragment.glsl — pseudocode TSL</span>
+        <button class="run-btn" id="pgRunBtn" onclick="runPlayground()">▶ Esegui</button>
+      </div>
+      <textarea class="pg-textarea" id="pgCode" spellcheck="false">// Puoi usare: uv.x, uv.y, time, sin, cos, fract, mix, step, smoothstep
+// Variabili: float da 0..1, vec3 = colore RGB
+// Scrivi una espressione per il colore finale (vec3 r,g,b)
+
+r = sin(uv.x * 10.0 + time) * 0.5 + 0.5;
+g = sin(uv.y * 10.0 + time * 1.3) * 0.5 + 0.5;
+b = sin((uv.x + uv.y) * 8.0 + time * 0.7) * 0.5 + 0.5;</textarea>
+    </div>
+    <div class="pg-canvas-area">
+      <canvas id="pgCanvas" width="500" height="340"></canvas>
+      <div id="pgError" class="error-msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <div class="card-t">💡 Preset: Gradient</div>
+      <p><button class="run-btn" onclick="loadPreset(0)" style="margin-top:6px;width:100%">Carica</button></p>
+    </div>
+    <div class="card ca">
+      <div class="card-t">💡 Preset: Checkerboard</div>
+      <p><button class="run-btn" onclick="loadPreset(1)" style="margin-top:6px;width:100%">Carica</button></p>
+    </div>
+    <div class="card cg">
+      <div class="card-t">💡 Preset: Ripple SDF</div>
+      <p><button class="run-btn" onclick="loadPreset(2)" style="margin-top:6px;width:100%">Carica</button></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 10 — TEXTURES
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 08 — textures</div>
+  <div class="title"><span class="b">Textures</span> e sampling</div>
+
+  <div class="g2">
+    <div>
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>textures.js</span></div>
+<pre><span class="kw">import</span> { <span class="fn">texture</span>, <span class="fn">uniform</span>, <span class="fn">uv</span>,
+  <span class="fn">vec2</span>, <span class="fn">time</span>, <span class="fn">sin</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="kw">const</span> <span class="var2">tex</span> = <span class="kw">new</span> <span class="cls">TextureLoader</span>().<span class="fn">load</span>(<span class="str">'map.jpg'</span>);
+
+<span class="cmt">// Sampling base (usa uv() di default)</span>
+<span class="kw">const</span> <span class="var2">col</span> = <span class="fn">texture</span>(<span class="var2">tex</span>);
+
+<span class="cmt">// UV animato — scrolling</span>
+<span class="kw">const</span> <span class="var2">scrollUV</span> = <span class="fn">uv</span>().<span class="fn">add</span>(
+  <span class="fn">vec2</span>(<span class="fn">time</span>.<span class="fn">mul</span>(<span class="num">0.1</span>), <span class="num">0</span>)
+);
+<span class="kw">const</span> <span class="var2">scrollTex</span> = <span class="fn">texture</span>(<span class="var2">tex</span>, <span class="var2">scrollUV</span>);
+
+<span class="cmt">// UV distorto con sin (water effect)</span>
+<span class="kw">const</span> <span class="var2">distUV</span> = <span class="fn">uv</span>().<span class="fn">add</span>(<span class="fn">vec2</span>(
+  <span class="fn">sin</span>(<span class="fn">uv</span>().<span class="prop">y</span>.<span class="fn">mul</span>(<span class="num">20</span>).<span class="fn">add</span>(<span class="fn">time</span>.<span class="fn">mul</span>(<span class="num">3</span>)))
+    .<span class="fn">mul</span>(<span class="num">0.03</span>),
+  <span class="fn">sin</span>(<span class="fn">uv</span>().<span class="prop">x</span>.<span class="fn">mul</span>(<span class="num">20</span>).<span class="fn">add</span>(<span class="fn">time</span>.<span class="fn">mul</span>(<span class="num">3</span>)))
+    .<span class="fn">mul</span>(<span class="num">0.03</span>)
+));
+<span class="var2">mat</span>.<span class="prop">colorNode</span> = <span class="fn">texture</span>(<span class="var2">tex</span>, <span class="var2">distUV</span>);
+
+<span class="cmt">// Uniform texture — swappabile a runtime</span>
+<span class="kw">const</span> <span class="var2">uTex</span> = <span class="fn">uniform</span>(<span class="var2">tex</span>);
+<span class="cmt">// uTex.value = altroTex; ← swap frame successivo</span></pre>
+      </div>
+    </div>
+    <div class="col">
+      <!-- UV distortion demo -->
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">UV distortion — effetto acqua</span><span class="demo-badge">● live</span></div>
+        <div class="demo-canvas-wrap" style="min-height:180px">
+          <canvas id="dUV" width="380" height="180"></canvas>
+        </div>
+        <div class="demo-controls">
+          <label>Forza <input type="range" id="duvStr" min="0" max="0.1" step="0.002" value="0.025"><span class="val" id="duvStrV">.025</span></label>
+          <label>Freq <input type="range" id="duvFreq" min="2" max="40" step="1" value="15"><span class="val" id="duvFreqV">15</span></label>
+          <label>Vel <input type="range" id="duvSpd" min="0" max="5" step="0.1" value="2"><span class="val" id="duvSpdV">2</span></label>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="card-t">texture()</div>
+          <p>2D texture. Ritorna <code>vec4</code>. Accedi con <code>.rgb</code> <code>.r</code> <code>.a</code></p>
+        </div>
+        <div class="card ca">
+          <div class="card-t">textureCube()</div>
+          <p>Cubemap con <code>vec3</code>. Per env map, skybox, reflections.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 11 — ESEMPIO COMPLETO: HOLOGRAPHIC
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 09 — esempio reale</div>
+  <div class="title">Esempio completo: <span class="p">Holographic Shader</span></div>
+
+  <div class="g12">
+    <div class="cw">
+      <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>holographic.js — tutto insieme</span></div>
+<pre><span class="kw">import</span> * <span class="kw">as</span> THREE <span class="kw">from</span> <span class="str">'three'</span>;
+<span class="kw">import</span> { <span class="fn">Fn</span>, <span class="fn">vec3</span>, <span class="fn">vec4</span>, <span class="fn">float</span>, <span class="fn">uniform</span>,
+  <span class="fn">time</span>, <span class="fn">positionWorld</span>, <span class="fn">normalWorld</span>,
+  <span class="fn">cameraPosition</span>, <span class="fn">sin</span>, <span class="fn">fract</span>,
+  <span class="fn">dot</span>, <span class="fn">normalize</span>,
+  <span class="cls">MeshBasicNodeMaterial</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="kw">const</span> <span class="var2">uColor</span>    = <span class="fn">uniform</span>(<span class="kw">new</span> THREE.<span class="cls">Color</span>(<span class="str">'#00ffff'</span>));
+<span class="kw">const</span> <span class="var2">uScanSpd</span>  = <span class="fn">uniform</span>(<span class="num">2.0</span>);
+<span class="kw">const</span> <span class="var2">uFresExp</span>  = <span class="fn">uniform</span>(<span class="num">2.0</span>);
+
+<span class="kw">const</span> <span class="var2">holoShader</span> = <span class="fn">Fn</span>(() => {
+  <span class="cmt">// 1. Scanlines animate</span>
+  <span class="kw">const</span> <span class="var2">scan</span> = <span class="fn">fract</span>(
+    <span class="fn">positionWorld</span>.<span class="prop">y</span>.<span class="fn">mul</span>(<span class="num">20</span>)
+      .<span class="fn">add</span>(<span class="fn">time</span>.<span class="fn">mul</span>(<span class="var2">uScanSpd</span>))
+  ).<span class="fn">smoothstep</span>(<span class="num">0.0</span>, <span class="num">0.3</span>);
+
+  <span class="cmt">// 2. Fresnel rim</span>
+  <span class="kw">const</span> <span class="var2">vDir</span> = <span class="fn">normalize</span>(
+    <span class="fn">cameraPosition</span>.<span class="fn">sub</span>(<span class="fn">positionWorld</span>)
+  );
+  <span class="kw">const</span> <span class="var2">fresnel</span> = <span class="fn">dot</span>(<span class="fn">normalWorld</span>, <span class="var2">vDir</span>)
+    .<span class="fn">oneMinus</span>().<span class="fn">pow</span>(<span class="var2">uFresExp</span>);
+
+  <span class="cmt">// 3. Glitch</span>
+  <span class="kw">const</span> <span class="var2">glitch</span> = <span class="fn">sin</span>(
+    <span class="fn">positionWorld</span>.<span class="prop">y</span>.<span class="fn">mul</span>(<span class="num">50</span>)
+      .<span class="fn">add</span>(<span class="fn">time</span>.<span class="fn">mul</span>(<span class="num">10</span>))
+  ).<span class="fn">pow</span>(<span class="num">20</span>).<span class="fn">mul</span>(<span class="num">0.4</span>);
+
+  <span class="cmt">// Combina alpha layers</span>
+  <span class="kw">const</span> <span class="var2">alpha</span> = <span class="fn">float</span>(<span class="num">0.1</span>)
+    .<span class="fn">add</span>(<span class="var2">scan</span>.<span class="fn">mul</span>(<span class="num">0.4</span>))
+    .<span class="fn">add</span>(<span class="var2">fresnel</span>.<span class="fn">mul</span>(<span class="num">0.5</span>))
+    .<span class="fn">add</span>(<span class="var2">glitch</span>);
+
+  <span class="kw">return</span> <span class="fn">vec4</span>(<span class="var2">uColor</span>, <span class="var2">alpha</span>);
+});
+
+<span class="kw">const</span> <span class="var2">mat</span> = <span class="kw">new</span> <span class="cls">MeshBasicNodeMaterial</span>({
+  transparent: <span class="kw">true</span>,
+  side: THREE.DoubleSide
+});
+<span class="var2">mat</span>.<span class="prop">outputNode</span> = <span class="var2">holoShader</span>();</pre>
+    </div>
+    <div class="col">
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">Holographic live</span><span class="demo-badge">● animato</span></div>
+        <div class="demo-canvas-wrap" style="min-height:200px">
+          <canvas id="dHolo" width="300" height="200"></canvas>
+        </div>
+        <div class="demo-controls" style="flex-direction:column;gap:8px">
+          <label style="width:100%">Scan Speed <input type="range" id="dhSpd" min="0" max="6" step="0.1" value="2" style="width:120px"><span class="val" id="dhSpdV">2</span></label>
+          <label style="width:100%">Fresnel Exp <input type="range" id="dhFres" min="0.5" max="8" step="0.1" value="2.5" style="width:120px"><span class="val" id="dhFresV">2.5</span></label>
+          <label style="width:100%">Colore <input type="color" id="dhCol" value="#00ffff"></label>
+          <label style="width:100%">Glitch <input type="range" id="dhGlitch" min="0" max="1" step="0.01" value="0.4" style="width:120px"><span class="val" id="dhGlitchV">.4</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">↓ scroll</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 12 — COMPUTE
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 10 — compute</div>
+  <div class="title">Compute Shaders <span class="badge bp" style="font-size:13px;vertical-align:middle">WebGPU only</span></div>
+  <div class="subtitle">Esegui simulazioni intere sulla GPU — 100k particelle aggiornate ogni frame senza toccare la CPU.</div>
+
+  <div class="g2">
+    <div class="cw">
+      <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>compute-particles.js</span></div>
+<pre><span class="kw">import</span> { <span class="fn">Fn</span>, <span class="fn">storage</span>, <span class="fn">instanceIndex</span>,
+  <span class="fn">uniform</span>, <span class="fn">vec3</span>, <span class="fn">If</span>,
+  <span class="cls">StorageBufferAttribute</span> } <span class="kw">from</span> <span class="str">'three/tsl'</span>;
+
+<span class="kw">const</span> <span class="var2">COUNT</span> = <span class="num">100_000</span>;
+
+<span class="cmt">// Buffer residenti sulla GPU</span>
+<span class="kw">const</span> <span class="var2">posBuffer</span> = <span class="kw">new</span> <span class="cls">StorageBufferAttribute</span>(COUNT, <span class="num">3</span>);
+<span class="kw">const</span> <span class="var2">velBuffer</span> = <span class="kw">new</span> <span class="cls">StorageBufferAttribute</span>(COUNT, <span class="num">3</span>);
+
+<span class="kw">const</span> <span class="var2">posNode</span> = <span class="fn">storage</span>(<span class="var2">posBuffer</span>, <span class="str">'vec3'</span>, COUNT);
+<span class="kw">const</span> <span class="var2">velNode</span> = <span class="fn">storage</span>(<span class="var2">velBuffer</span>, <span class="str">'vec3'</span>, COUNT);
+<span class="kw">const</span> <span class="var2">uGravity</span> = <span class="fn">uniform</span>(<span class="fn">vec3</span>(<span class="num">0</span>, <span class="op">-</span><span class="num">9.8</span>, <span class="num">0</span>));
+<span class="kw">const</span> <span class="var2">uDelta</span> = <span class="fn">uniform</span>(<span class="num">0.016</span>);
+
+<span class="cmt">// Fn() che gira come compute shader</span>
+<span class="kw">const</span> <span class="var2">updateFn</span> = <span class="fn">Fn</span>(() => {
+  <span class="kw">const</span> <span class="var2">idx</span> = <span class="fn">instanceIndex</span>;  <span class="cmt">// thread ID</span>
+  <span class="kw">const</span> <span class="var2">pos</span> = <span class="var2">posNode</span>.<span class="fn">element</span>(<span class="var2">idx</span>);
+  <span class="kw">const</span> <span class="var2">vel</span> = <span class="var2">velNode</span>.<span class="fn">element</span>(<span class="var2">idx</span>);
+
+  <span class="var2">vel</span>.<span class="fn">addAssign</span>(<span class="var2">uGravity</span>.<span class="fn">mul</span>(<span class="var2">uDelta</span>));
+  <span class="var2">pos</span>.<span class="fn">addAssign</span>(<span class="var2">vel</span>.<span class="fn">mul</span>(<span class="var2">uDelta</span>));
+
+  <span class="fn">If</span>(<span class="var2">pos</span>.<span class="prop">y</span>.<span class="fn">lessThan</span>(<span class="num">0</span>), () => {
+    <span class="var2">pos</span>.<span class="prop">y</span>.<span class="fn">assign</span>(<span class="num">0</span>);
+    <span class="var2">vel</span>.<span class="prop">y</span>.<span class="fn">assign</span>(
+      <span class="var2">vel</span>.<span class="prop">y</span>.<span class="fn">abs</span>().<span class="fn">mul</span>(<span class="num">0.8</span>)
+    );
+  });
+});
+
+<span class="cmt">// .compute(n) → dispatch n thread in parallelo</span>
+<span class="kw">const</span> <span class="var2">computeNode</span> = <span class="var2">updateFn</span>().<span class="fn">compute</span>(COUNT);
+
+<span class="cmt">// render loop</span>
+<span class="kw">await</span> <span class="var2">renderer</span>.<span class="fn">computeAsync</span>(<span class="var2">computeNode</span>);</pre>
+    </div>
+    <div class="col">
+      <!-- GPU particle sim demo -->
+      <div class="demo-shell">
+        <div class="demo-bar"><span class="demo-title">Simulazione particelle CPU (concept)</span><span class="demo-badge">● live</span></div>
+        <div class="demo-canvas-wrap" style="min-height:200px">
+          <canvas id="dPart" width="380" height="200"></canvas>
+        </div>
+        <div class="demo-controls">
+          <label>Gravity <input type="range" id="dpGrav" min="0" max="5" step="0.1" value="1.5"><span class="val" id="dpGravV">1.5</span></label>
+          <label>Count <input type="range" id="dpCount" min="50" max="500" step="50" value="150"><span class="val" id="dpCountV">150</span></label>
+          <label>Bounce <input type="range" id="dpBounce" min="0" max="1" step="0.05" value="0.7"><span class="val" id="dpBounceV">.7</span></label>
+        </div>
+      </div>
+      <div class="callout w">⚠️ I compute shader richiedono WebGPU. Fallback WebGL: usa <code>GPGPU</code> con render target (tecnica vecchia ma compatibile).</div>
+    </div>
+  </div>
+  <div class="scroll-hint">↓ scroll</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 13 — BEST PRACTICES
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 11 — best practices</div>
+  <div class="title">Best Practices <span class="r">& Gotchas</span></div>
+
+  <div class="g2">
+    <div class="col">
+      <div class="lgood">✅ DO</div>
+      <div class="card cg">
+        <div class="card-t">.toVar() per variabili mutabili</div>
+        <p><code>const x = float(1).toVar()</code> crea una variabile shader modificabile. Senza <code>.toVar()</code> il nodo è read-only. <code>x.addAssign(1)</code> funziona solo con <code>.toVar()</code>.</p>
+      </div>
+      <div class="card cg">
+        <div class="card-t">Fn() per logica riutilizzabile</div>
+        <p>Wrappa la logica complessa in <code>Fn()</code>. Viene compilata come funzione separata — non inline. Più leggibile, riusabile tra materiali.</p>
+      </div>
+      <div class="card cg">
+        <div class="card-t">uniform() per dati dinamici</div>
+        <p>Qualsiasi valore che cambia ogni frame deve essere <code>uniform()</code>. Non creare nuovi nodi nel render loop — crea i nodi <strong>una volta</strong>, aggiorna solo <code>.value</code>.</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="lbad">❌ DON'T</div>
+      <div class="card ca">
+        <div class="card-t">Non mescolare operatori JS e TSL</div>
+        <p><code>float(1).add(2)</code> ✅ — <code>float(1) + 2</code> ❌. Gli operatori JavaScript (<code>+</code> <code>*</code> ecc.) <strong>non sono overloadati</strong> in TSL. Usa sempre i metodi.</p>
+      </div>
+      <div class="card ca">
+        <div class="card-t">Non ricreare nodi ogni frame</div>
+        <p>Creare nodi TSL ha un costo. Il codice nella render loop deve solo aggiornare <code>.value</code> degli uniforms — non creare nuovi <code>Fn()</code>, <code>vec3()</code>, ecc.</p>
+      </div>
+      <div class="card ca">
+        <div class="card-t">Debug: leggi il GLSL generato</div>
+        <p>Usa <code>renderer.debug.output = true</code> per stampare il codice GLSL/WGSL generato. Molto utile per capire cosa sta succedendo davvero.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick quiz interattivo -->
+  <div class="demo-shell">
+    <div class="demo-bar"><span class="demo-title">🧠 Quick quiz — cosa fa questo codice TSL?</span><span class="demo-badge">click per risposta</span></div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:10px" id="quizBox">
+      <div class="cw" style="flex-shrink:0"><pre id="quizCode" style="font-size:12px"></pre></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="quizOptions"></div>
+      <div style="font-size:12px;color:var(--muted);min-height:20px" id="quizFeedback"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 14 — WEBGL VS WEBGPU
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 12 — compatibilità</div>
+  <div class="title">WebGL <span class="r">vs</span> <span class="b">WebGPU</span></div>
+  <div class="subtitle">TSL compila su entrambi i backend. Ma alcune feature sono WebGPU-only. Ecco cosa devi sapere.</div>
+
+  <div class="g2">
+    <table>
+      <tr><th>Feature</th><th>WebGL</th><th>WebGPU</th></tr>
+      <tr><td>NodeMaterial / TSL base</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Uniforms / Varyings</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Texture sampling</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Custom vertex/fragment</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Post Processing</td><td>⚠️ partial</td><td>✅</td></tr>
+      <tr><td>Compute Shaders</td><td>❌</td><td>✅</td></tr>
+      <tr><td>Storage Buffers</td><td>❌</td><td>✅</td></tr>
+      <tr><td>Indirect Draw</td><td>❌</td><td>✅</td></tr>
+      <tr><td>Atomic ops</td><td>❌</td><td>✅</td></tr>
+      <tr><td>Browser support</td><td>Tutti</td><td>Chrome 113+, FF Nightly</td></tr>
+    </table>
+    <div class="col">
+      <div class="cw">
+        <div class="ch"><div class="dots"><span></span><span></span><span></span></div><span>renderer-setup.js — fallback automatico</span></div>
+<pre><span class="kw">import</span> { <span class="cls">WebGLRenderer</span> } <span class="kw">from</span> <span class="str">'three'</span>;
+<span class="kw">import</span> { <span class="cls">WebGPURenderer</span> } <span class="kw">from</span>
+  <span class="str">'three/addons/renderers/WebGPURenderer'</span>;
+
+<span class="kw">let</span> <span class="var2">renderer</span>;
+<span class="kw">if</span> (<span class="kw">await</span> <span class="cls">WebGPURenderer</span>.<span class="fn">isAvailable</span>()) {
+  <span class="var2">renderer</span> = <span class="kw">new</span> <span class="cls">WebGPURenderer</span>();
+  <span class="var2">renderer</span>.<span class="prop">backend</span> = <span class="str">'webgpu'</span>;
+} <span class="kw">else</span> {
+  <span class="cmt">// Fallback → GLSL automatico</span>
+  <span class="var2">renderer</span> = <span class="kw">new</span> <span class="cls">WebGLRenderer</span>();
+}
+<span class="cmt">// Lo stesso codice TSL funziona su entrambi!</span></pre>
+      </div>
+      <div class="callout w">⚠️ Safari: WebGPU in sviluppo (Safari TP). In produzione usa sempre il fallback WebGL. Il TSL gestisce la traduzione automaticamente.</div>
+      <div class="callout g">✅ Per vertex/fragment shader normali (effetti, materiali personalizzati) TSL funziona identico su WebGL. Solo compute richiede WebGPU.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 15 — RISORSE
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="tag">// 13 — percorso di apprendimento</div>
+  <div class="title">Dove <span class="b">imparare</span> — step by step</div>
+
+  <div class="g2">
+    <div class="steps">
+      <div class="step">
+        <div class="step-num"><div class="step-circle" style="background:rgba(88,199,255,.15);color:var(--accent)">01</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <div class="step-title" style="color:var(--accent)">The Book of Shaders — fondamenta GLSL</div>
+          <div class="step-desc"><code>thebookofshaders.com</code> — Gratuito, interattivo, con editor live. Leggi i capitoli 1-10. Capirai uv, time, smoothstep, fract, noise. 1–2 settimane.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"><div class="step-circle" style="background:rgba(255,123,114,.15);color:var(--accent2)">02</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <div class="step-title" style="color:var(--accent2)">Bruno Simon — Three.js Journey</div>
+          <div class="step-desc"><code>threejs-journey.com</code> — Migliore corso Three.js esistente. Lezioni 27-29 per ShaderMaterial classico, poi le nuove lezioni TSL. A pagamento ma vale ogni centesimo.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"><div class="step-circle" style="background:rgba(86,211,100,.15);color:var(--accent3)">03</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <div class="step-title" style="color:var(--accent3)">Three.js examples WebGPU</div>
+          <div class="step-desc"><code>threejs.org/examples/?q=webgpu_</code> — Ogni esempio ha source linkato. Parti da <code>webgpu_materials</code>, <code>webgpu_tsl_editor</code>. Goldmine di pattern reali.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"><div class="step-circle" style="background:rgba(188,140,255,.15);color:var(--purple)">04</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <div class="step-title" style="color:var(--purple)">Inigo Quilez — iquilezles.org</div>
+          <div class="step-desc">Il re degli shader procedurali. Articoli su SDF, noise, color palettes, smooth minimum. Livello avanzato ma ogni articolo ha demo Shadertoy embedded.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"><div class="step-circle" style="background:rgba(255,210,0,.15);color:var(--accent4)">05</div></div>
+        <div class="step-body">
+          <div class="step-title" style="color:var(--accent4)">Shadertoy + Source TSL</div>
+          <div class="step-desc"><code>shadertoy.com</code> per ispirazione GLSL. <code>github.com/mrdoob/three.js/tree/dev/src/nodes</code> per leggere i tipi TSL — è la documentazione vera.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card cy">
+        <div class="card-t">🗺️ Concetti da studiare in ordine</div>
+        <p style="line-height:2.2">
+          1. UV coordinates e texture mapping<br>
+          2. <code>smoothstep</code>, <code>step</code>, <code>fract</code> — la base di tutto<br>
+          3. Noise: value → Perlin → Simplex → fBm<br>
+          4. SDF (Signed Distance Functions)<br>
+          5. Fresnel + Normal mapping<br>
+          6. PBR (Physically Based Rendering)<br>
+          7. Post processing pipeline<br>
+          8. Compute shaders (WebGPU)
+        </p>
+      </div>
+      <div class="card cp">
+        <div class="card-t">💬 Community</div>
+        <p style="line-height:1.9">
+          <strong>Discord Three.js</strong> — canale <code>#webgpu-renderer</code>. Gli autori di TSL rispondono.<br>
+          <strong>GitHub Discussions</strong> — Three.js repo, tag webgpu.<br>
+          <strong>TSL Editor online</strong> — <code>threejs.org/examples/webgpu_tsl_editor.html</code> — scrivi TSL e vedi il GLSL/WGSL generato in real-time.
+        </p>
+      </div>
+      <div class="callout g">🚀 <strong>Prossimo step:</strong> clona Three.js, apri <code>examples/webgpu_tsl_editor.html</code> e modifica i shader esistenti. È il modo più veloce per imparare.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 16 — FINE
+══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hero">
+    <div class="hero-logo" style="font-size:clamp(50px,9vw,90px)">Grazie 🚀</div>
+    <div class="hero-sub">domande?</div>
+    <div class="hero-desc">
+      TSL è il futuro degli shader in Three.js — JavaScript-first, cross-backend, composable.<br><br>
+      Il momento giusto per iniziare è adesso.
+    </div>
+    <div class="brow">
+      <span class="badge bb">three/tsl</span>
+      <span class="badge bg">WebGPU</span>
+      <span class="badge br">NodeMaterial</span>
+      <span class="badge bp">compute shaders</span>
+      <span class="badge by">cross-backend</span>
+    </div>
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:6px;align-items:center">
+      <div style="font-size:11px;color:var(--muted)">Slide create con TSL-flavored JavaScript ✨</div>
+      <div style="font-size:10px;color:var(--dim)">← → per navigare &nbsp;·&nbsp; scroll per slide lunghe</div>
+    </div>
+  </div>
+</div>
+
+    </div><!-- /track -->
+  </div><!-- /viewport -->
+
+  <div class="nav">
+    <button class="nav-btn" id="prevBtn" onclick="goTo(cur-1)">← prev</button>
+    <div class="nav-dots" id="navDots"></div>
+    <button class="nav-btn" id="nextBtn" onclick="goTo(cur+1)">next →</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// BG PARTICLES
+// ─────────────────────────────────────────────────────────────────────────────
+const bgC = document.getElementById('bgCanvas');
+const bgX = bgC.getContext('2d');
+let pts = [];
+function resizeBg(){bgC.width=innerWidth;bgC.height=innerHeight}
+function initBg(){pts=[];for(let i=0;i<55;i++)pts.push({x:Math.random()*bgC.width,y:Math.random()*bgC.height,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.4+.4,o:Math.random()*.3+.08})}
+function bgLoop(){bgX.clearRect(0,0,bgC.width,bgC.height);for(let p of pts){p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=bgC.width;if(p.x>bgC.width)p.x=0;if(p.y<0)p.y=bgC.height;if(p.y>bgC.height)p.y=0;bgX.beginPath();bgX.arc(p.x,p.y,p.r,0,Math.PI*2);bgX.fillStyle=`rgba(88,199,255,${p.o})`;bgX.fill()}for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<110){bgX.beginPath();bgX.moveTo(pts[i].x,pts[i].y);bgX.lineTo(pts[j].x,pts[j].y);bgX.strokeStyle=`rgba(88,199,255,${(1-d/110)*.09})`;bgX.lineWidth=.5;bgX.stroke()}}requestAnimationFrame(bgLoop)}
+resizeBg();initBg();bgLoop();window.addEventListener('resize',()=>{resizeBg();initBg()});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLIDES
+// ─────────────────────────────────────────────────────────────────────────────
+const slides=document.querySelectorAll('.slide');
+const track=document.getElementById('track');
+const pFill=document.getElementById('pFill');
+const sNum=document.getElementById('sNum');
+const sTotal=document.getElementById('sTotal');
+const navDots=document.getElementById('navDots');
+const prevBtn=document.getElementById('prevBtn');
+const nextBtn=document.getElementById('nextBtn');
+const chLabel=document.getElementById('chapterLabel');
+const N=slides.length;
+sTotal.textContent=N;
+let cur=0;
+
+const CHAPTERS=['intro','fondamenta','il problema','architettura','sintassi','built-ins','uniforms','funzioni Fn()','playground','textures','holographic','compute','best practices','compatibilità','risorse','fine'];
+
+for(let i=0;i<N;i++){const d=document.createElement('div');d.className='nd';d.addEventListener('click',()=>goTo(i));navDots.appendChild(d)}
+
+function goTo(n){
+  cur=Math.max(0,Math.min(N-1,n));
+  track.style.transform=`translateX(-${cur*100}vw)`;
+  pFill.style.width=`${(cur+1)/N*100}%`;
+  sNum.textContent=cur+1;
+  prevBtn.disabled=cur===0;
+  nextBtn.disabled=cur===N-1;
+  navDots.querySelectorAll('.nd').forEach((d,i)=>d.classList.toggle('on',i===cur));
+  chLabel.textContent=CHAPTERS[cur]||'';
+  slides[cur].scrollTop=0;
+}
+
+document.addEventListener('keydown',e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();goTo(cur+1)}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();goTo(cur-1)}
+  if(e.key==='Home')goTo(0);if(e.key==='End')goTo(N-1);
+});
+let tsx=0;
+document.addEventListener('touchstart',e=>tsx=e.touches[0].clientX,{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tsx;if(Math.abs(dx)>50)goTo(dx<0?cur+1:cur-1)},{passive:true});
+goTo(0);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function hexToRgb(h){const r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;return[r,g,b]}
+function bind(id,cb,ev='input'){const el=document.getElementById(id);if(el)el.addEventListener(ev,e=>cb(e.target))}
+function val(id){const el=document.getElementById(id);return el?parseFloat(el.value):0}
+function valStr(id){const el=document.getElementById(id);return el?el.value:''}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO 0 — Fragment shader concept
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('d0');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  bind('d0speed',el=>document.getElementById('d0speedV').textContent=parseFloat(el.value).toFixed(1));
+  bind('d0scale',el=>document.getElementById('d0scaleV').textContent=parseFloat(el.value).toFixed(1));
+  function loop(){
+    t+=0.016*val('d0speed');
+    const [cr,cg,cb]=hexToRgb(valStr('d0col'));
+    const W=c.width,H=c.height,sc=val('d0scale');
+    const img=x.createImageData(W,H);
+    for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+      const uvx=px/W,uvy=py/H;
+      const v=Math.sin(uvx*sc*3.14+t)*Math.cos(uvy*sc*3.14+t*.7)*.5+.5;
+      const i=(py*W+px)*4;
+      img.data[i]=v*cr*255;img.data[i+1]=v*cg*255;img.data[i+2]=v*cb*255;img.data[i+3]=255;
+    }
+    x.putImageData(img,0,0);
+    requestAnimationFrame(loop);
+  }loop();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO GRAPH — node graph visualizer
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dGraph');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  const nodes=[
+    {label:'time',x:.15,y:.5,col:'#ffd200'},
+    {label:'add(2.094)',x:.38,y:.25,col:'#79c0ff'},
+    {label:'add(0)',x:.38,y:.5,col:'#79c0ff'},
+    {label:'add(4.189)',x:.38,y:.75,col:'#79c0ff'},
+    {label:'sin',x:.62,y:.25,col:'#bc8cff'},
+    {label:'sin',x:.62,y:.5,col:'#bc8cff'},
+    {label:'sin',x:.62,y:.75,col:'#bc8cff'},
+    {label:'vec3',x:.85,y:.5,col:'#ff7b72'},
+  ];
+  const edges=[[0,1],[0,2],[0,3],[1,4],[2,5],[3,6],[4,7],[5,7],[6,7]];
+  function draw(){
+    t+=.02;
+    x.clearRect(0,0,c.width,c.height);
+    const W=c.width,H=c.height;
+    edges.forEach(([a,b])=>{
+      const na=nodes[a],nb=nodes[b];
+      x.beginPath();
+      x.moveTo(na.x*W,na.y*H);
+      x.lineTo(nb.x*W,nb.y*H);
+      x.strokeStyle='rgba(88,199,255,0.2)';x.lineWidth=1;x.stroke();
+    });
+    nodes.forEach((n,i)=>{
+      const px=n.x*W,py=n.y*H;
+      const pulse=Math.sin(t+i*.5)*.5+.5;
+      x.beginPath();x.arc(px,py,7+pulse*3,0,Math.PI*2);
+      x.fillStyle=n.col+(Math.round(pulse*100+40).toString(16).padStart(2,'0'));x.fill();
+      x.fillStyle=n.col;x.font='9px JetBrains Mono';x.textAlign='center';
+      x.fillText(n.label,px,py-12);
+    });
+    requestAnimationFrame(draw);
+  }draw();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO VERTEX DISPLACEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dVert');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  bind('dvFreq',el=>document.getElementById('dvFreqV').textContent=parseFloat(el.value).toFixed(1));
+  bind('dvAmp',el=>document.getElementById('dvAmpV').textContent=parseFloat(el.value).toFixed(2));
+  bind('dvSpd',el=>document.getElementById('dvSpdV').textContent=parseFloat(el.value).toFixed(1));
+  function draw(){
+    t+=.016;
+    x.clearRect(0,0,c.width,c.height);
+    const W=c.width,H=c.height;
+    const freq=val('dvFreq'),amp=val('dvAmp')*H*.6,spd=val('dvSpd');
+    // grid of points
+    const cols=60,rows=10;
+    x.strokeStyle='rgba(88,199,255,0.15)';x.lineWidth=1;
+    for(let r=0;r<=rows;r++){
+      x.beginPath();
+      for(let cc=0;cc<=cols;cc++){
+        const px=cc/cols*W,uvx=cc/cols,uvy=r/rows;
+        const disp=Math.sin(uvx*freq*Math.PI*2+t*spd)*amp*(1-Math.abs(uvy-.5)*2);
+        const py=H/2+disp;
+        if(cc===0)x.moveTo(px,py);else x.lineTo(px,py);
+      }
+      x.stroke();
+    }
+    // highlight middle wave
+    x.beginPath();x.strokeStyle='rgba(88,199,255,0.9)';x.lineWidth=2;
+    for(let cc=0;cc<=W;cc++){
+      const uvx=cc/W;
+      const disp=Math.sin(uvx*freq*Math.PI*2+t*spd)*amp;
+      const py=H/2+disp;
+      if(cc===0)x.moveTo(cc,py);else x.lineTo(cc,py);
+    }
+    x.stroke();
+    // label
+    x.fillStyle='rgba(88,199,255,0.5)';x.font='11px JetBrains Mono';x.textAlign='left';
+    x.fillText(`pos.y += sin(pos.x × ${val('dvFreq').toFixed(0)} + time × ${val('dvSpd').toFixed(1)}) × ${val('dvAmp').toFixed(2)}`,10,14);
+    requestAnimationFrame(draw);
+  }draw();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO FRESNEL
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dFresnel');if(!c)return;
+  const x=c.getContext('2d');
+  bind('dfPow',el=>document.getElementById('dfPowV').textContent=parseFloat(el.value).toFixed(1));
+  function draw(){
+    x.clearRect(0,0,c.width,c.height);
+    const W=c.width,H=c.height;
+    const pw=val('dfPow');
+    const [r1,g1,b1]=hexToRgb(valStr('dfC1'));
+    const [r2,g2,b2]=hexToRgb(valStr('dfC2'));
+    const img=x.createImageData(W,H);
+    const cx=W/2,cy=H/2,radius=Math.min(W,H)/2-10;
+    for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+      const dx=(px-cx)/radius,dy=(py-cy)/radius;
+      const d2=dx*dx+dy*dy;
+      if(d2>1){const i=(py*W+px)*4;img.data[i]=12;img.data[i+1]=17;img.data[i+2]=22;img.data[i+3]=255;continue}
+      const dz=Math.sqrt(Math.max(0,1-d2));
+      const nx=dx,ny=dy,nz=dz;
+      const dot=Math.max(0,nz);
+      const fresnel=Math.pow(1-dot,pw);
+      const i=(py*W+px)*4;
+      img.data[i]=Math.round(r1+(r2-r1)*fresnel)*255;
+      img.data[i+1]=Math.round(g1+(g2-g1)*fresnel)*255;
+      img.data[i+2]=Math.round(b1+(b2-b1)*fresnel)*255;
+      img.data[i+3]=255;
+    }
+    x.putImageData(img,0,0);
+    requestAnimationFrame(draw);
+  }
+  bind('dfPow',()=>draw());bind('dfC1',()=>draw(),{});bind('dfC2',()=>draw(),{});
+  document.getElementById('dfC1')?.addEventListener('input',draw);
+  document.getElementById('dfC2')?.addEventListener('input',draw);
+  draw();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO UNIFORM
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dUniform');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  bind('duInt',el=>document.getElementById('duIntV').textContent=parseFloat(el.value).toFixed(2));
+  bind('duRip',el=>document.getElementById('duRipV').textContent=parseFloat(el.value).toFixed(1));
+  function draw(){
+    t+=.016;
+    const W=c.width,H=c.height;
+    const [cr,cg,cb]=hexToRgb(valStr('duColor'));
+    const intensity=val('duInt'),ripple=val('duRip');
+    const img=x.createImageData(W,H);
+    for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+      const uvx=px/W,uvy=py/H;
+      const r2=(uvx-.5)**2+(uvy-.5)**2;
+      const v=Math.sin(Math.sqrt(r2)*ripple*20-t*3)*.5+.5;
+      const br=v*intensity;
+      const i=(py*W+px)*4;
+      img.data[i]=cr*255*br;img.data[i+1]=cg*255*br;img.data[i+2]=cb*255*br;img.data[i+3]=255;
+    }
+    x.putImageData(img,0,0);
+    x.fillStyle='rgba(88,199,255,.5)';x.font='10px JetBrains Mono';x.textAlign='left';
+    x.fillText(`uColor=${valStr('duColor')} · uIntensity=${val('duInt').toFixed(2)} · uRipple=${val('duRip').toFixed(1)}`,8,12);
+    requestAnimationFrame(draw);
+  }draw();
+  document.getElementById('duColor')?.addEventListener('input',()=>{});
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO NOISE (fBm)
+// ─────────────────────────────────────────────────────────────────────────────
+function hash(x,y){let v=Math.sin(x*127.1+y*311.7)*43758.5453;return v-Math.floor(v)}
+function valueNoise(x,y){const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);const a=hash(ix,iy),b=hash(ix+1,iy),c=hash(ix,iy+1),d=hash(ix+1,iy+1);return a+(b-a)*ux+(c-a)*uy+(d-a-c+a)*ux*uy}
+function fbm(x,y,octaves){let v=0,amp=.5,freq=1;for(let i=0;i<octaves;i++){v+=valueNoise(x*freq,y*freq)*amp;amp*=.5;freq*=2}return v}
+
+(function(){
+  const c=document.getElementById('dNoise');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  bind('dnOct',el=>document.getElementById('dnOctV').textContent=el.value);
+  bind('dnScale',el=>document.getElementById('dnScaleV').textContent=parseFloat(el.value).toFixed(1));
+  bind('dnSpd',el=>document.getElementById('dnSpdV').textContent=parseFloat(el.value).toFixed(2));
+  function draw(){
+    t+=.016*val('dnSpd');
+    const W=c.width,H=c.height,sc=val('dnScale'),oct=parseInt(val('dnOct'));
+    const img=x.createImageData(W,H);
+    for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+      const uvx=px/W*sc,uvy=py/H*sc;
+      const v=fbm(uvx+t*.5,uvy+t*.3,oct);
+      const br=Math.floor(v*255);
+      const i=(py*W+px)*4;
+      img.data[i]=Math.floor(br*.35);img.data[i+1]=Math.floor(br*.7+30);img.data[i+2]=br;img.data[i+3]=255;
+    }
+    x.putImageData(img,0,0);
+    x.fillStyle='rgba(188,140,255,.6)';x.font='10px JetBrains Mono';x.textAlign='left';
+    x.fillText(`fBm(uv×${val('dnScale').toFixed(0)}, octaves=${parseInt(val('dnOct'))})`,6,12);
+    requestAnimationFrame(draw);
+  }draw();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO HOLOGRAPHIC
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dHolo');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  ['dhSpd','dhFres','dhGlitch'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){const vid=id+'V';bind(id,el2=>document.getElementById(vid).textContent=parseFloat(el2.value).toFixed(1))}
+  });
+  function draw(){
+    t+=.016;
+    const W=c.width,H=c.height;
+    const [cr,cg,cb]=hexToRgb(valStr('dhCol'));
+    const scanSpd=val('dhSpd'),fresExp=val('dhFres'),glitchAmt=val('dhGlitch');
+    const img=x.createImageData(W,H);
+    const cx=W/2,cy=H/2,radius=Math.min(W,H)/2-8;
+    for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+      const dx=(px-cx)/radius,dy=(py-cy)/radius;
+      const d2=dx*dx+dy*dy;
+      if(d2>1){const i=(py*W+px)*4;img.data[i]=7;img.data[i+1]=11;img.data[i+2]=15;img.data[i+3]=255;continue}
+      const dz=Math.sqrt(Math.max(0,1-d2));
+      const worldY=dy;
+      const scan=Math.max(0,Math.min(1,((worldY*10+t*scanSpd)%1)/(0.3+.001)));
+      const fresnel=Math.pow(Math.max(0,1-dz),fresExp);
+      const glitch=Math.pow(Math.max(0,Math.sin(worldY*25+t*10)),20)*glitchAmt;
+      const alpha=0.05+scan*.4+fresnel*.55+glitch;
+      const i=(py*W+px)*4;
+      img.data[i]=Math.min(255,cr*255*alpha*2);
+      img.data[i+1]=Math.min(255,cg*255*alpha*2);
+      img.data[i+2]=Math.min(255,cb*255*alpha*2);
+      img.data[i+3]=255;
+    }
+    x.putImageData(img,0,0);
+    requestAnimationFrame(draw);
+  }draw();
+  document.getElementById('dhCol')?.addEventListener('input',()=>{});
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO UV DISTORTION
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dUV');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0;
+  bind('duvStr',el=>document.getElementById('duvStrV').textContent=parseFloat(el.value).toFixed(3));
+  bind('duvFreq',el=>document.getElementById('duvFreqV').textContent=el.value);
+  bind('duvSpd',el=>document.getElementById('duvSpdV').textContent=parseFloat(el.value).toFixed(1));
+  function draw(){
+    t+=.016;
+    const W=c.width,H=c.height,str=val('duvStr'),freq=val('duvFreq'),spd=val('duvSpd');
+    const img=x.createImageData(W,H);
+    for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+      let uvx=px/W,uvy=py/H;
+      uvx+=Math.sin(uvy*freq+t*spd)*str;
+      uvy+=Math.sin(uvx*freq+t*spd)*str;
+      uvx=((uvx%1)+1)%1;uvy=((uvy%1)+1)%1;
+      const cx=Math.floor(uvx*8),cy=Math.floor(uvy*8);
+      const checker=(cx+cy)%2;
+      const stripe=Math.sin(uvx*20+t)*.5+.5;
+      const r=checker?stripe*.4+.1:uvx*.6;
+      const g=checker?stripe*.2+.05:uvy*.6;
+      const b=checker?stripe*.8+.1:(uvx+uvy)*.3;
+      const i=(py*W+px)*4;
+      img.data[i]=r*255;img.data[i+1]=g*255;img.data[i+2]=b*255;img.data[i+3]=255;
+    }
+    x.putImageData(img,0,0);
+    requestAnimationFrame(draw);
+  }draw();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO PARTICLES
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('dPart');if(!c)return;
+  const x=c.getContext('2d');
+  let particles=[];
+  bind('dpGrav',el=>document.getElementById('dpGravV').textContent=parseFloat(el.value).toFixed(1));
+  bind('dpBounce',el=>document.getElementById('dpBounceV').textContent=parseFloat(el.value).toFixed(2));
+  bind('dpCount',el=>{document.getElementById('dpCountV').textContent=el.value;initPart()});
+  function initPart(){
+    const n=parseInt(val('dpCount'));
+    particles=[];
+    for(let i=0;i<n;i++)particles.push({x:c.width/2+(Math.random()-.5)*80,y:c.height*.3,vx:(Math.random()-.5)*4,vy:(Math.random()-1)*3,col:`hsl(${180+Math.random()*60},80%,${50+Math.random()*20}%)`});
+  }
+  initPart();
+  function draw(){
+    const W=c.width,H=c.height,grav=val('dpGrav'),bounce=val('dpBounce');
+    x.fillStyle='rgba(7,11,15,.3)';x.fillRect(0,0,W,H);
+    for(const p of particles){
+      p.vy+=grav*.1;p.x+=p.vx;p.y+=p.vy;
+      if(p.y>H-4){p.y=H-4;p.vy*=-bounce;p.vx*=.98}
+      if(p.x<0||p.x>W){p.vx*=-1}
+      if(p.y<0){p.y=0;p.vy*=-1}
+      x.beginPath();x.arc(p.x,p.y,2,0,Math.PI*2);x.fillStyle=p.col;x.fill();
+    }
+    x.fillStyle='rgba(88,199,255,.4)';x.font='10px JetBrains Mono';x.textAlign='left';
+    x.fillText(`${particles.length} particelle · gravity=${val('dpGrav').toFixed(1)} · bounce=${val('dpBounce').toFixed(2)}`,6,12);
+    requestAnimationFrame(draw);
+  }draw();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLAYGROUND
+// ─────────────────────────────────────────────────────────────────────────────
+const PRESETS=[
+`// Gradient + hue shift
+r = uv.x;
+g = uv.y;
+b = sin(time * 0.5) * 0.5 + 0.5;`,
+`// Checkerboard animato
+let cx = Math.floor(uv.x * 10);
+let cy = Math.floor(uv.y * 10);
+let check = (cx + cy) % 2;
+let pulse = sin(time * 2) * 0.3 + 0.7;
+r = check * pulse;
+g = check * 0.3 * pulse;
+b = (1 - check) * 0.6;`,
+`// Ripple SDF (circle distance)
+let dx = uv.x - 0.5;
+let dy = uv.y - 0.5;
+let dist = Math.sqrt(dx*dx + dy*dy);
+let ripple = sin(dist * 20 - time * 3) * 0.5 + 0.5;
+let edge = 1 - smoothstep(dist, 0.35, 0.45);
+r = ripple * edge * 0.2;
+g = ripple * edge * 0.8;
+b = ripple * edge;`
+];
+
+function loadPreset(i){document.getElementById('pgCode').value=PRESETS[i];runPlayground()}
+
+(function(){
+  const c=document.getElementById('pgCanvas');if(!c)return;
+  const x=c.getContext('2d');
+  let t=0,running=true,compiledFn=null;
+  const errBox=document.getElementById('pgError');
+
+  function smoothstep(x,a,b){const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t)}
+  function compile(){
+    const code=document.getElementById('pgCode')?.value||'';
+    errBox.style.display='none';
+    try{
+      const fn=new Function('uv','time','sin','cos','fract','mix','step','smoothstep','Math',`let r=0,g=0,b=0;\n${code}\nreturn [r,g,b];`);
+      fn({x:.5,y:.5},0,Math.sin,Math.cos,x=>x-Math.floor(x),(a,b,t)=>a+(b-a)*t,(a,b)=>a<b?0:1,smoothstep,Math);
+      compiledFn=fn;
+      document.getElementById('pgRunBtn')?.classList.add('active');
+    }catch(e){errBox.textContent='⚠ '+e.message;errBox.style.display='block';compiledFn=null}
+  }
+
+  window.runPlayground=compile;
+  compile();
+
+  function draw(){
+    t+=.016;
+    if(!compiledFn){x.clearRect(0,0,c.width,c.height);x.fillStyle='#0d1117';x.fillRect(0,0,c.width,c.height);x.fillStyle='#ff7b72';x.font='12px JetBrains Mono';x.textAlign='center';x.fillText('Premi ▶ Esegui per compilare',c.width/2,c.height/2);requestAnimationFrame(draw);return}
+    const W=c.width,H=c.height,step=2;
+    const img=x.createImageData(W,H);
+    const sin=Math.sin,cos=Math.cos;
+    const fract=x=>x-Math.floor(x);
+    const mix=(a,b,t)=>a+(b-a)*t;
+    const stepf=(a,b)=>a<b?0:1;
+    try{
+      for(let py=0;py<H;py+=step)for(let px=0;px<W;px+=step){
+        const uv={x:px/W,y:1-py/H};
+        const [r,g,b]=compiledFn(uv,t,sin,cos,fract,mix,stepf,smoothstep,Math);
+        for(let dy=0;dy<step;dy++)for(let dx=0;dx<step;dx++){
+          const i=((py+dy)*W+(px+dx))*4;
+          img.data[i]=Math.max(0,Math.min(255,r*255));
+          img.data[i+1]=Math.max(0,Math.min(255,g*255));
+          img.data[i+2]=Math.max(0,Math.min(255,b*255));
+          img.data[i+3]=255;
+        }
+      }
+    }catch(e){compiledFn=null}
+    x.putImageData(img,0,0);
+    requestAnimationFrame(draw);
+  }draw();
+  document.getElementById('pgCode')?.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=e.target,st=s.selectionStart;s.value=s.value.substring(0,st)+'  '+s.value.substring(s.selectionEnd);s.selectionStart=s.selectionEnd=st+2}});
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUIZ
+// ─────────────────────────────────────────────────────────────────────────────
+const quizzes=[
+  {code:`const x = float(1.5).add(float(0.5));`,q:'Cosa contiene x?',answers:['Il numero JS 2.0','Un FloatNode con valore 2.0','Un errore — add() non esiste','Un vec2'],correct:1,explain:'x è un FloatNode. Il calcolo avverrà nel GLSL generato, non in JavaScript.'},
+  {code:`const v = vec3(1, 0, 0);\nconst r = v.x;`,q:'Cosa è r?',answers:['Il numero 1','Una stringa "x"','Un FloatNode','undefined'],correct:2,explain:'Lo swizzling su un nodo restituisce un altro nodo (FloatNode), non un valore JS.'},
+  {code:`const u = uniform(0.5);\nu.value = 1.0;`,q:'Cosa succede allo shader?',answers:['Errore: value è readonly','Lo shader si ricompila','Il valore cambia al frame successivo senza rebuild','Niente, .value è ignorato'],correct:2,explain:'Gli uniforms TSL sono reattivi: aggiornare .value applica il cambiamento al render successivo, zero recompilation.'},
+  {code:`const f = Fn(() => {\n  const x = float(0);\n  x.addAssign(1);\n  return x;\n});`,q:'Questo codice funziona?',answers:['Sì','No — float(0) è immutabile','No — addAssign non esiste','Solo su WebGPU'],correct:1,explain:'float(0) senza .toVar() è immutabile. addAssign() fallirà. Serve float(0).toVar() per creare una variabile mutabile.'},
+];
+let qIdx=0;
+function renderQuiz(){
+  const q=quizzes[qIdx%quizzes.length];
+  const codeEl=document.getElementById('quizCode');
+  const optEl=document.getElementById('quizOptions');
+  const fbEl=document.getElementById('quizFeedback');
+  if(!codeEl)return;
+  codeEl.innerHTML=q.code.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  fbEl.textContent='👆 '+q.q;
+  fbEl.style.color='var(--muted)';
+  optEl.innerHTML='';
+  q.answers.forEach((a,i)=>{
+    const btn=document.createElement('button');
+    btn.className='run-btn';btn.textContent=a;
+    btn.style.fontSize='11px';
+    btn.onclick=()=>{
+      if(i===q.correct){fbEl.textContent='✅ Corretto! '+q.explain;fbEl.style.color='var(--accent3)'}
+      else{fbEl.textContent='❌ Sbagliato. '+q.explain;fbEl.style.color='var(--accent2)'}
+      setTimeout(()=>{qIdx++;renderQuiz()},2800);
+    };
+    optEl.appendChild(btn);
+  });
+}
+renderQuiz();
+</script>
+</body>
+</html>
